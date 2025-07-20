@@ -22,8 +22,8 @@ MEMPERCENT=`free | awk '/Mem/{printf("%.2f% (Used) "), $3/$2*100}'`
 PROCESSES=`ps -ef | wc -l`
 IPv4ADDRESSES=`ip -4 ad | grep -w "inet" | cut -d ' ' -f 6 | grep -v 127.0.0.1 | tr '\n' ' '`
 IPv6ADDRESSES=`ip -6 ad | grep -w "inet6" | cut -d ' ' -f 6 | grep -v ::1/128 | tr '\n' ' '`
-SERVICES=`/bin/sh /etc/motd.d/Suse-MOTD-Services.sh`
-SSLCERTS=`/bin/sh /etc/motd.d/Suse-MOTD-sslCerts.sh`
+SERVICES=`/bin/sh /etc/motd.d/suse-motd-services.sh`
+SSLCERTS=`/bin/sh /etc/motd.d/suse-motd-sslcerts.sh`
 
 #Time of day
 HOUR=$(date +"%H")
