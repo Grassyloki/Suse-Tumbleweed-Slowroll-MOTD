@@ -11,7 +11,7 @@ declare -a services=(
 )
 declare -a serviceName=(
 "OpenSSH-Server"
-"Nginx Web Server"
+"Nginx Reverse Proxy"
 )
 declare -a serviceStatus=()
 

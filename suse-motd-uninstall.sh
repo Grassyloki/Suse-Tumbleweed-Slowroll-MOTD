@@ -37,24 +37,24 @@ else
     echo -e "${YELLOW}Main MOTD script not found${NC}"
 fi
 
-if [ -f "/etc/motd.d/Suse-MOTD-Services.sh" ]; then
-    rm -f /etc/motd.d/Suse-MOTD-Services.sh
+if [ -f "/usr/local/share/suse-motd/suse-motd-services.sh" ]; then
+    rm -f /usr/local/share/suse-motd/suse-motd-services.sh
     echo -e "${GREEN}✓ Services script removed${NC}"
 else
     echo -e "${YELLOW}Services script not found${NC}"
 fi
 
-if [ -f "/etc/motd.d/Suse-MOTD-sslCerts.sh" ]; then
-    rm -f /etc/motd.d/Suse-MOTD-sslCerts.sh
+if [ -f "/usr/local/share/suse-motd/suse-motd-sslcerts.sh" ]; then
+    rm -f /usr/local/share/suse-motd/suse-motd-sslcerts.sh
     echo -e "${GREEN}✓ SSL certificates script removed${NC}"
 else
     echo -e "${YELLOW}SSL certificates script not found${NC}"
 fi
 
-# Remove motd.d directory if empty
-if [ -d "/etc/motd.d" ] && [ -z "$(ls -A /etc/motd.d)" ]; then
-    rmdir /etc/motd.d
-    echo -e "${GREEN}✓ Empty motd.d directory removed${NC}"
+# Remove directory if empty
+if [ -d "/usr/local/share/suse-motd" ] && [ -z "$(ls -A /usr/local/share/suse-motd)" ]; then
+    rmdir /usr/local/share/suse-motd
+    echo -e "${GREEN}✓ Empty suse-motd directory removed${NC}"
 fi
 
 # Revert PAM configuration

@@ -18,43 +18,43 @@ fi
 echo -e "${GREEN}openSUSE Tumbleweed Slowroll MOTD Installation Script${NC}"
 echo "======================================================"
 
-# Create motd.d directory if it doesn't exist
-echo -e "\n${YELLOW}Creating /etc/motd.d directory...${NC}"
-mkdir -p /etc/motd.d
+# Create directory for MOTD scripts
+echo -e "\n${YELLOW}Creating /usr/local/share/suse-motd directory...${NC}"
+mkdir -p /usr/local/share/suse-motd
 
 # Copy scripts
 echo -e "${YELLOW}Installing MOTD scripts...${NC}"
 
 # Main script
-if [ -f "SuseMOTD.sh" ]; then
-    cp SuseMOTD.sh /bin/generate_motd.sh
+if [ -f "suse-motd-main.sh" ]; then
+    cp suse-motd-main.sh /bin/generate_motd.sh
     chmod 0755 /bin/generate_motd.sh
     chown root:root /bin/generate_motd.sh
     echo -e "${GREEN}✓ Main MOTD script installed${NC}"
 else
-    echo -e "${RED}✗ SuseMOTD.sh not found in current directory${NC}"
+    echo -e "${RED}✗ suse-motd-main.sh not found in current directory${NC}"
     exit 1
 fi
 
 # Services script
-if [ -f "Suse-MOTD-Services.sh" ]; then
-    cp Suse-MOTD-Services.sh /etc/motd.d/
-    chmod 0755 /etc/motd.d/Suse-MOTD-Services.sh
-    chown root:root /etc/motd.d/Suse-MOTD-Services.sh
+if [ -f "suse-motd-services.sh" ]; then
+    cp suse-motd-services.sh /usr/local/share/suse-motd/
+    chmod 0755 /usr/local/share/suse-motd/suse-motd-services.sh
+    chown root:root /usr/local/share/suse-motd/suse-motd-services.sh
     echo -e "${GREEN}✓ Services script installed${NC}"
 else
-    echo -e "${RED}✗ Suse-MOTD-Services.sh not found in current directory${NC}"
+    echo -e "${RED}✗ suse-motd-services.sh not found in current directory${NC}"
     exit 1
 fi
 
 # SSL Certs script
-if [ -f "Suse-MOTD-sslCerts.sh" ]; then
-    cp Suse-MOTD-sslCerts.sh /etc/motd.d/
-    chmod 0755 /etc/motd.d/Suse-MOTD-sslCerts.sh
-    chown root:root /etc/motd.d/Suse-MOTD-sslCerts.sh
+if [ -f "suse-motd-sslcerts.sh" ]; then
+    cp suse-motd-sslcerts.sh /usr/local/share/suse-motd/
+    chmod 0755 /usr/local/share/suse-motd/suse-motd-sslcerts.sh
+    chown root:root /usr/local/share/suse-motd/suse-motd-sslcerts.sh
     echo -e "${GREEN}✓ SSL certificates script installed${NC}"
 else
-    echo -e "${RED}✗ Suse-MOTD-sslCerts.sh not found in current directory${NC}"
+    echo -e "${RED}✗ suse-motd-sslcerts.sh not found in current directory${NC}"
     exit 1
 fi
 
@@ -80,15 +80,20 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     if grep -q "pam_exec.so.*generate_motd.sh" /etc/pam.d/common-session; then
         echo -e "${YELLOW}PAM configuration already contains MOTD script${NC}"
     else
-        # Add the pam_exec line before pam_motd
-        sed -i '/pam_motd.so/i session    optional   pam_exec.so          /bin/generate_motd.sh' /etc/pam.d/common-session
+        # Add the pam_exec line after pam_limits.so or at the beginning
+        if grep -q "pam_limits.so" /etc/pam.d/common-session; then
+            sed -i '/pam_limits.so/a session optional   pam_exec.so          /bin/generate_motd.sh' /etc/pam.d/common-session
+        else
+            # Add at the beginning of the file
+            sed -i '1i session optional   pam_exec.so          /bin/generate_motd.sh' /etc/pam.d/common-session
+        fi
         echo -e "${GREEN}✓ PAM configuration updated${NC}"
     fi
 else
     echo -e "${YELLOW}Skipping PAM configuration update${NC}"
     echo -e "${YELLOW}To manually update, add this line to /etc/pam.d/common-session:${NC}"
-    echo "session    optional   pam_exec.so          /bin/generate_motd.sh"
-    echo -e "${YELLOW}Add it before the pam_motd.so line${NC}"
+    echo "session optional   pam_exec.so          /bin/generate_motd.sh"
+    echo -e "${YELLOW}Add it after the pam_limits.so line${NC}"
 fi
 
 # Generate initial MOTD
@@ -98,17 +103,27 @@ echo -e "${GREEN}✓ Initial MOTD generated${NC}"
 
 # Customize services
 echo -e "\n${YELLOW}Note: To customize monitored services, edit:${NC}"
-echo "/etc/motd.d/Suse-MOTD-Services.sh"
+echo "/usr/local/share/suse-motd/suse-motd-services.sh"
 echo "Add or remove services from the 'services' and 'serviceName' arrays."
 
 echo -e "\n${GREEN}Installation complete!${NC}"
 echo "The MOTD will be displayed on your next login."
 echo -e "\n${YELLOW}Backup of PAM configuration saved with timestamp${NC}"
 
+# Clean up any old scripts in /etc/motd.d/
+if [ -f "/etc/motd.d/suse-motd-services.sh" ] || [ -f "/etc/motd.d/suse-motd-sslcerts.sh" ]; then
+    echo -e "\n${YELLOW}Cleaning up old scripts from /etc/motd.d/...${NC}"
+    rm -f /etc/motd.d/suse-motd-services.sh /etc/motd.d/suse-motd-sslcerts.sh
+    echo -e "${GREEN}✓ Old scripts removed${NC}"
+fi
+
 # Test the installation
 echo -e "\n${YELLOW}Testing installation...${NC}"
 if [ -x /bin/generate_motd.sh ] && [ -f /etc/motd ]; then
     echo -e "${GREEN}✓ Installation test passed${NC}"
+    echo -e "\n${YELLOW}Note: If you see duplicate output or script content in your MOTD,${NC}"
+    echo -e "${YELLOW}you may need to disable system motd.d execution by commenting out${NC}"
+    echo -e "${YELLOW}any 'pam_motd.so' lines that reference '/etc/motd.d' in PAM configs.${NC}"
 else
     echo -e "${RED}✗ Installation test failed${NC}"
     exit 1

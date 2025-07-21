@@ -9,21 +9,47 @@ HOSTNAME=`uname -n`
 KERNEL=`uname -r`
 CPU=`echo "$(grep -c processor /proc/cpuinfo)" x $(awk -F '[ :][ :]+' '/^model name/ { print $2; exit; }' /proc/cpuinfo)`
 ARCH=`uname -m`
+
 # openSUSE specific: Count available updates using zypper
 ZYPPER=`zypper list-updates 2>/dev/null | grep -E '^v |^  ' | wc -l`
-ALLDISK=`df -hl| grep "/dev/" | sed '/shm/d' |sed '/efi/d' | xargs -L1 echo`
-ROOTDISKFree=`df -hl| grep "/dev/" | sed '/shm/d' |sed '/efi/d' | grep -w '/' | xargs -L1 echo| cut -d ' ' -f 4`
-ROOTDISKUsed=`df -hl| grep "/dev/" | sed '/shm/d' |sed '/efi/d' | grep -w '/' | xargs -L1 echo| cut -d ' ' -f 3`
-ROOTDISKTotal=`df -hl| grep "/dev/" | sed '/shm/d' |sed '/efi/d' | grep -w '/' | xargs -L1 echo |cut -d ' ' -f 2`
-ROOTDISKPercent=`df -hl| grep "/dev/" | sed '/shm/d' |sed '/efi/d' | grep -w '/' | xargs -L1 echo | cut -d ' ' -f 5`
-MEMORY1=`free -t -m | grep "Mem" | awk '{print $6" MB";}'`
-MEMORY2=`free -t -m | grep "Mem" | awk '{print $2" MB";}'`
-MEMPERCENT=`free | awk '/Mem/{printf("%.2f% (Used) "), $3/$2*100}'`
+
+# Root disk info - properly formatted for BTRFS
+ROOTDISK_INFO=`df -h / | grep -E "^/dev/" | head -1`
+ROOTDISKUsed=`echo "$ROOTDISK_INFO" | awk '{print $3}'`
+ROOTDISKTotal=`echo "$ROOTDISK_INFO" | awk '{print $2}'`
+ROOTDISKFree=`echo "$ROOTDISK_INFO" | awk '{print $4}'`
+ROOTDISKPercent=`echo "$ROOTDISK_INFO" | awk '{print $5}'`
+
+# Memory info
+MEMORY1=`free -t -m | grep "Mem" | awk '{print $3" MB"}'`
+MEMORY2=`free -t -m | grep "Mem" | awk '{print $2" MB"}'`
+MEMPERCENT=`free | awk '/Mem/{printf("%.2f% (Used)"), $3/$2*100}'`
+
+# Process count
 PROCESSES=`ps -ef | wc -l`
+
+# Network addresses
 IPv4ADDRESSES=`ip -4 ad | grep -w "inet" | cut -d ' ' -f 6 | grep -v 127.0.0.1 | tr '\n' ' '`
 IPv6ADDRESSES=`ip -6 ad | grep -w "inet6" | cut -d ' ' -f 6 | grep -v ::1/128 | tr '\n' ' '`
-SERVICES=`/bin/sh /etc/motd.d/suse-motd-services.sh`
-SSLCERTS=`/bin/sh /etc/motd.d/suse-motd-sslcerts.sh`
+
+# Run additional scripts
+SERVICES=`/bin/sh /usr/local/share/suse-motd/suse-motd-services.sh`
+SSLCERTS=`/bin/sh /usr/local/share/suse-motd/suse-motd-sslcerts.sh`
+
+# BTRFS snapshot info for root
+if [ -d "/.snapshots" ]; then
+    LAST_SNAPSHOT=`ls -1 /.snapshots/ 2>/dev/null | grep -E '^[0-9]+$' | sort -n | tail -1`
+    if [ ! -z "$LAST_SNAPSHOT" ]; then
+        SNAPSHOT_DATE=`stat -c %y /.snapshots/$LAST_SNAPSHOT/info.xml 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1`
+        if [ -z "$SNAPSHOT_DATE" ]; then
+            SNAPSHOT_DATE="Unknown"
+        fi
+    else
+        SNAPSHOT_DATE="No snapshots found"
+    fi
+else
+    SNAPSHOT_DATE="Snapshots not configured"
+fi
 
 #Time of day
 HOUR=$(date +"%H")
@@ -90,13 +116,15 @@ $G                     ...................
                     .....................                                                                                   
                             ....                                                                                            $W
 " > $motd
+
 echo -e "$G---------------------------------------------------------------" >> $motd
-echo -e "$W   Good $TIME$A You're Logged Into $B$A$HOSTNAME$W! "            >> $motd
+echo -e "$W   Good $TIME! You're Logged Into $B$HOSTNAME$W! " >> $motd
 echo -e "$G---------------------------------------------------------------" >> $motd
 echo -e "$B    KERNEL $G:$W $KERNEL $ARCH                                 " >> $motd
 echo -e "$B       CPU $G:$W $CPU                                          " >> $motd
 echo -e "$B    MEMORY $G:$W $MEMORY1 used of $MEMORY2 - $MEMPERCENT             " >> $motd
-echo -e "$B ROOT DISK $G:$W $ROOTDISKUsed used of $ROOTDISKTotal | $ROOTDISKFree Free" >> $motd
+echo -e "$B ROOT DISK $G:$W $ROOTDISKUsed used of $ROOTDISKTotal | $ROOTDISKFree Free ($ROOTDISKPercent)" >> $motd
+echo -e "$B  SNAPSHOT $G:$W Last: $SNAPSHOT_DATE                          " >> $motd
 echo -e "$B IPv4 ADDR $G:$W $IPv4ADDRESSES                                    " >> $motd
 echo -e "$B IPv6 ADDR $G:$W $IPv6ADDRESSES                                    " >> $motd
 echo -e "$G---------------------------------------------------------------" >> $motd
