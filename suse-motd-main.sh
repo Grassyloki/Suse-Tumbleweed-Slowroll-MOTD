@@ -28,6 +28,25 @@ MEMPERCENT=`free | awk '/Mem/{printf("%.2f% (Used)"), $3/$2*100}'`
 # Process count
 PROCESSES=`ps -ef | wc -l`
 
+# SELinux status
+if command -v getenforce &> /dev/null; then
+    SELINUX_STATUS=$(getenforce 2>/dev/null)
+    if [ "$SELINUX_STATUS" = "Enforcing" ]; then
+        SELINUX_COLOR="$G"
+        SELINUX_SYMBOL="●"
+    elif [ "$SELINUX_STATUS" = "Permissive" ]; then
+        SELINUX_COLOR="\033[01;33m"  # Yellow
+        SELINUX_SYMBOL="▲"
+    else
+        SELINUX_COLOR="$R"
+        SELINUX_SYMBOL="✗"
+    fi
+    SELINUX_DISPLAY="${SELINUX_COLOR}${SELINUX_SYMBOL} ${SELINUX_STATUS}${W}"
+else
+    # SELinux not installed
+    SELINUX_DISPLAY="${R}✗ Not Installed${W}"
+fi
+
 # Network addresses
 IPv4ADDRESSES=`ip -4 ad | grep -w "inet" | cut -d ' ' -f 6 | grep -v 127.0.0.1 | tr '\n' ' '`
 IPv6ADDRESSES=`ip -6 ad | grep -w "inet6" | cut -d ' ' -f 6 | grep -v ::1/128 | tr '\n' ' '`
@@ -120,6 +139,7 @@ $G                     ...................
 echo -e "$G---------------------------------------------------------------" >> $motd
 echo -e "$W   Good $TIME! You're Logged Into $B$HOSTNAME$W! " >> $motd
 echo -e "$G---------------------------------------------------------------" >> $motd
+echo -e "$B   SELINUX $G:$W $SELINUX_DISPLAY                              " >> $motd
 echo -e "$B    KERNEL $G:$W $KERNEL $ARCH                                 " >> $motd
 echo -e "$B       CPU $G:$W $CPU                                          " >> $motd
 echo -e "$B    MEMORY $G:$W $MEMORY1 used of $MEMORY2 - $MEMPERCENT             " >> $motd
